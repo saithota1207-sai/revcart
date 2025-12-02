@@ -17,6 +17,7 @@ import java.util.Random;
 
 @RestController
 @RequestMapping("/api/delivery")
+@CrossOrigin(origins = "http://localhost:4200")
 public class DeliveryController {
 
     @Autowired
@@ -87,9 +88,12 @@ public class DeliveryController {
                 deliveryAgentRepository.save(agent);
                 
                 try {
+                    System.out.println("[DeliveryController] Sending login OTP to: " + email);
                     emailService.sendOtpEmail(email, otp);
+                    System.out.println("[DeliveryController] Login OTP sent successfully");
                 } catch (Exception e) {
-                    System.err.println("Failed to send OTP: " + e.getMessage());
+                    System.err.println("[DeliveryController] Failed to send login OTP: " + e.getMessage());
+                    e.printStackTrace();
                 }
                 
                 return ResponseEntity.badRequest().body(Map.of(
@@ -146,9 +150,12 @@ public class DeliveryController {
             deliveryAgentRepository.save(agent);
             
             try {
+                System.out.println("[DeliveryController] Resending OTP to: " + email);
                 emailService.sendOtpEmail(email, otp);
+                System.out.println("[DeliveryController] OTP resent successfully");
             } catch (Exception e) {
-                System.err.println("Failed to send OTP: " + e.getMessage());
+                System.err.println("[DeliveryController] Failed to resend OTP: " + e.getMessage());
+                e.printStackTrace();
             }
             
             return ResponseEntity.ok(Map.of("message", "OTP resent to email"));
@@ -225,6 +232,16 @@ public class DeliveryController {
             return ResponseEntity.ok(location);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", "Error fetching location"));
+        }
+    }
+
+    @GetMapping("/orders")
+    public ResponseEntity<?> getDeliveryOrders() {
+        try {
+            List<Order> orders = deliveryService.getDeliveryOrders();
+            return ResponseEntity.ok(orders);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Error fetching orders"));
         }
     }
 

@@ -74,6 +74,7 @@ com\revcart\service\EmailService.class
 com\revcart\controller\AnalyticsController.class
 com\revcart\mongo\DeliveryLogRepository.class
 com\revcart\RevCartApplication.class
+com\revcart\controller\TestEmailController.class
 com\revcart\entity\Product.class
 com\revcart\controller\SearchController.class
 com\revcart\entity\Payment$PaymentMethod.class

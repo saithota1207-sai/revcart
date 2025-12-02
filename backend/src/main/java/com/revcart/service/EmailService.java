@@ -15,6 +15,14 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    public boolean isEmailConfigured() {
+        boolean configured = mailSender != null && fromEmail != null && !fromEmail.isEmpty();
+        System.out.println("[EmailService] Email configured: " + configured);
+        System.out.println("[EmailService] MailSender: " + (mailSender != null ? "Available" : "NULL"));
+        System.out.println("[EmailService] From email: " + fromEmail);
+        return configured;
+    }
+
     public void sendOtpEmail(String email, String otp) {
         sendEmail(email, "RevCart - Email Verification OTP", "Your OTP for email verification is: " + otp + "\nThis OTP is valid for 10 minutes.");
     }

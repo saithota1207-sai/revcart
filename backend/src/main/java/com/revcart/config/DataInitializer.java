@@ -3,6 +3,7 @@ package com.revcart.config;
 import com.revcart.entity.DeliveryAgent;
 import com.revcart.entity.Product;
 import com.revcart.entity.User;
+import com.revcart.entity.Coupon;
 import com.revcart.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -33,6 +34,9 @@ public class DataInitializer implements CommandLineRunner {
     private DeliveryAgentRepository deliveryAgentRepository;
 
     @Autowired
+    private CouponRepository couponRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Override
@@ -55,12 +59,23 @@ public class DataInitializer implements CommandLineRunner {
             deliveryAgentRepository.save(agent);
         }
 
-        if (productRepository.count() < 88) {
-            orderItemRepository.deleteAll();
-            paymentRepository.deleteAll();
-            orderRepository.deleteAll();
-            productRepository.deleteAll();
+        // Always ensure we have products for demo
+        if (productRepository.count() == 0) {
+            System.out.println("[DataInitializer] No products found. Creating sample products...");
             initializeProducts();
+            System.out.println("[DataInitializer] Created " + productRepository.count() + " products");
+        } else {
+            System.out.println("[DataInitializer] Found " + productRepository.count() + " products in database");
+        }
+
+        // Initialize sample coupons - always recreate for demo
+        System.out.println("[DataInitializer] Current coupon count: " + couponRepository.count());
+        if (couponRepository.count() == 0) {
+            System.out.println("[DataInitializer] Creating sample coupons...");
+            initializeCoupons();
+            System.out.println("[DataInitializer] Created " + couponRepository.count() + " coupons");
+        } else {
+            System.out.println("[DataInitializer] Coupons already exist");
         }
     }
 
@@ -174,5 +189,35 @@ public class DataInitializer implements CommandLineRunner {
         productRepository.save(new Product("Kids Sweater", "kids-clothing", new BigDecimal("699"), "1 piece", "https://images.unsplash.com/photo-1556821552-5f63b1c2c723?w=300&h=200&fit=crop", "Cozy kids sweater"));
         productRepository.save(new Product("Kids Shoes", "kids-clothing", new BigDecimal("799"), "1 pair", "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=200&fit=crop", "Comfortable kids shoes"));
         productRepository.save(new Product("Kids Socks", "kids-clothing", new BigDecimal("199"), "3 pairs", "https://images.unsplash.com/photo-1556821552-5f63b1c2c723?w=300&h=200&fit=crop", "Colorful kids socks"));
+    }
+
+    private void initializeCoupons() {
+        // Create sample coupons for testing
+        Coupon coupon1 = new Coupon();
+        coupon1.setCode("SAVE10");
+        coupon1.setDiscountPercentage(10);
+        coupon1.setMinOrderAmount(new BigDecimal("100"));
+        coupon1.setMaxUses(100);
+        coupon1.setUsedCount(0);
+        coupon1.setActive(true);
+        couponRepository.save(coupon1);
+
+        Coupon coupon2 = new Coupon();
+        coupon2.setCode("WELCOME20");
+        coupon2.setDiscountPercentage(20);
+        coupon2.setMinOrderAmount(new BigDecimal("200"));
+        coupon2.setMaxUses(50);
+        coupon2.setUsedCount(0);
+        coupon2.setActive(true);
+        couponRepository.save(coupon2);
+
+        Coupon coupon3 = new Coupon();
+        coupon3.setCode("BIGDEAL");
+        coupon3.setDiscountPercentage(15);
+        coupon3.setMinOrderAmount(new BigDecimal("500"));
+        coupon3.setMaxUses(25);
+        coupon3.setUsedCount(0);
+        coupon3.setActive(true);
+        couponRepository.save(coupon3);
     }
 }

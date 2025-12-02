@@ -89,4 +89,11 @@ public class DeliveryService {
             "timestamp", System.currentTimeMillis()
         ));
     }
+
+    public List<Order> getDeliveryOrders() {
+        return orderRepository.findAll().stream()
+            .filter(order -> order.getStatus() != Order.OrderStatus.DELIVERED && 
+                           order.getStatus() != Order.OrderStatus.CANCELLED)
+            .toList();
+    }
 }
