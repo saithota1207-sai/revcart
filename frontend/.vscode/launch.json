@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run RevCart Backend",
+            "request": "launch",
+            "mainClass": "com.revcart.RevCartApplication",
+            "projectName": "backend",
+            "cwd": "${workspaceFolder}/backend"
+        }
+    ]
+}

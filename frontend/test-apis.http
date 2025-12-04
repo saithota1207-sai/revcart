@@ -1,0 +1,112 @@
+### RevCart API Testing
+### Make sure backend is running on http://localhost:8080
+
+### 1. Test User Registration
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "name": "Test User",
+  "email": "test@example.com",
+  "password": "password123",
+  "phone": "9876543210",
+  "address": "Test Address, City"
+}
+
+### 2. Test User Login
+POST http://localhost:8080/api/auth/signin
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### 3. Test Admin Login
+POST http://localhost:8080/api/auth/signin
+Content-Type: application/json
+
+{
+  "email": "saithota1207@gmail.com",
+  "password": "admin123"
+}
+
+### 4. Get All Products (No Auth Required)
+GET http://localhost:8080/api/products
+
+### 5. Get Products by Category
+GET http://localhost:8080/api/products/category/fruits
+
+### 6. Search Products
+GET http://localhost:8080/api/products/search?name=apple
+
+### 7. Get Product by ID
+GET http://localhost:8080/api/products/1
+
+### 8. Get User Cart (Requires Auth Token)
+GET http://localhost:8080/api/cart
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+### 9. Add Item to Cart (Requires Auth Token)
+POST http://localhost:8080/api/cart/add
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "productId": 1,
+  "quantity": 2
+}
+
+### 10. Update Cart Item (Requires Auth Token)
+PUT http://localhost:8080/api/cart/update
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "productId": 1,
+  "quantity": 3
+}
+
+### 11. Remove Item from Cart (Requires Auth Token)
+DELETE http://localhost:8080/api/cart/remove/1
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+### 12. Get User Profile (Requires Auth Token)
+GET http://localhost:8080/api/user/profile
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+### 13. Update User Profile (Requires Auth Token)
+PUT http://localhost:8080/api/user/profile
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "name": "Updated Name",
+  "phone": "9999999999",
+  "address": "Updated Address"
+}
+
+### 14. Create Order (Requires Auth Token)
+POST http://localhost:8080/api/orders
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "deliveryAddress": "Test Delivery Address",
+  "paymentMethod": "CASH_ON_DELIVERY",
+  "items": [
+    {
+      "productId": 1,
+      "quantity": 2,
+      "price": 120.00
+    }
+  ]
+}
+
+### 15. Get User Orders (Requires Auth Token)
+GET http://localhost:8080/api/orders
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+### 16. Test CORS (Should work from frontend)
+OPTIONS http://localhost:8080/api/products
+Origin: http://localhost:4200
