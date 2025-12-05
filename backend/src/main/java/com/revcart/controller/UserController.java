@@ -102,7 +102,7 @@ public class UserController {
     public ResponseEntity<?> getUserAddresses(Authentication authentication) {
         try {
             User user = getUserFromAuthentication(authentication);
-            List<Address> addresses = addressRepository.findByUser(user);
+            List<Address> addresses = addressRepository.findByUserOrderByIsDefaultDescIdAsc(user);
             return ResponseEntity.ok(addresses);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", "Error fetching addresses"));
@@ -123,9 +123,14 @@ public class UserController {
                     });
             }
             
-            Address address = new Address(user, addressRequest.getName(), addressRequest.getAddressLine(),
-                                        addressRequest.getCity(), addressRequest.getState(),
-                                        addressRequest.getPincode(), addressRequest.getPhone());
+            Address address = new Address();
+            address.setUser(user);
+            address.setFullName(addressRequest.getName());
+            address.setLine1(addressRequest.getAddressLine());
+            address.setCity(addressRequest.getCity());
+            address.setState(addressRequest.getState());
+            address.setPincode(addressRequest.getPincode());
+            address.setPhone(addressRequest.getPhone());
             address.setIsDefault(addressRequest.getIsDefault());
             
             addressRepository.save(address);
@@ -158,8 +163,8 @@ public class UserController {
                     });
             }
             
-            address.setName(addressRequest.getName());
-            address.setAddressLine(addressRequest.getAddressLine());
+            address.setFullName(addressRequest.getName());
+            address.setLine1(addressRequest.getAddressLine());
             address.setCity(addressRequest.getCity());
             address.setState(addressRequest.getState());
             address.setPincode(addressRequest.getPincode());
