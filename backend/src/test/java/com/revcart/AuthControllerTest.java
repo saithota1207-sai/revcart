@@ -42,12 +42,24 @@ public class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("User registered successfully!"));
+                .andExpect(jsonPath("$.message").value("User registered successfully! OTP sent to email."));
     }
 
     @Test
     public void testAdminLogin() throws Exception {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        
+        // First create admin user for test
+        SignupRequest adminSignup = new SignupRequest();
+        adminSignup.setName("Admin User");
+        adminSignup.setEmail("saithota1207@gmail.com");
+        adminSignup.setPassword("admin123");
+        adminSignup.setPhone("9876543210");
+        adminSignup.setAddress("Admin Address");
+        
+        mockMvc.perform(post("/api/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(adminSignup)));
         
         LoginRequest loginRequest = new LoginRequest();
         loginRequest.setEmail("saithota1207@gmail.com");
@@ -56,7 +68,7 @@ public class AuthControllerTest {
         mockMvc.perform(post("/api/auth/signin")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Email not verified. OTP sent to your email."));
     }
 }
