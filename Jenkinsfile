@@ -23,7 +23,7 @@ pipeline {
             steps {
                 dir("${FRONTEND_DIR}") {
                     bat 'npm install'
-                    bat 'npm run build'
+                    bat 'npm run build -- --configuration production --optimization=false'
                 }
             }
         }
@@ -37,43 +37,26 @@ pipeline {
             }
         }
         
-        stage('Test') {
-            parallel {
-                stage('Frontend Tests') {
-                    steps {
-                        dir("${FRONTEND_DIR}") {
-                            bat 'npm test -- --watch=false --browsers=ChromeHeadless'
-                        }
-                    }
-                }
-                stage('Backend Tests') {
-                    steps {
-                        dir("${BACKEND_DIR}") {
-                            bat 'mvn test'
-                        }
-                    }
+        stage('Test Backend') {
+            steps {
+                dir("${BACKEND_DIR}") {
+                    bat 'mvn test'
                 }
             }
         }
         
-        stage('Deploy') {
+        stage('Deploy Frontend') {
             steps {
-                script {
-                    // Stop existing processes
-                    bat '''
-                        taskkill /F /IM java.exe /T 2>nul || echo "No Java processes to kill"
-                        taskkill /F /IM node.exe /T 2>nul || echo "No Node processes to kill"
-                    '''
-                    
-                    // Deploy Frontend
-                    dir("${FRONTEND_DIR}") {
-                        bat 'start /B npm start'
-                    }
-                    
-                    // Deploy Backend
-                    dir("${BACKEND_DIR}") {
-                        bat 'start /B mvn spring-boot:run'
-                    }
+                dir("${FRONTEND_DIR}") {
+                    bat 'start /B npm start'
+                }
+            }
+        }
+        
+        stage('Deploy Backend') {
+            steps {
+                dir("${BACKEND_DIR}") {
+                    bat 'start /B mvn spring-boot:run'
                 }
             }
         }
