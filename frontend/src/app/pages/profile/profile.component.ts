@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
+import { AddressService, Address } from '../../services/address.service';
 
 @Component({
   selector: 'app-profile',
@@ -24,26 +25,19 @@ export class ProfileComponent implements OnInit {
     profilePicture: null as string | null
   };
   
-  addresses = [
-    {
-      type: 'Home',
-      line1: '123 Main Street',
-      line2: 'Apartment 4B',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      pincode: '400001',
-      phone: '+91 9876543210'
-    },
-    {
-      type: 'Office',
-      line1: '456 Business Park',
-      line2: 'Floor 5',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      pincode: '400002',
-      phone: '+91 9876543210'
-    }
-  ];
+  addresses: Address[] = [];
+  
+  showAddressForm = false;
+  editingAddress: Address | null = null;
+  addressForm: Address = {
+    fullName: '',
+    phone: '',
+    line1: '',
+    line2: '',
+    city: '',
+    state: '',
+    pincode: ''
+  };
   
   orders = [
     { id: '12345', date: '2024-01-15', items: 5, total: 450, status: 'Delivered' },
@@ -59,11 +53,19 @@ export class ProfileComponent implements OnInit {
 
   constructor(
     private authService: AuthService,
-    private userService: UserService
+    private userService: UserService,
+    private addressService: AddressService
   ) {}
 
   ngOnInit(): void {
     this.loadUserData();
+    this.loadAddresses();
+  }
+  
+  loadAddresses(): void {
+    this.addressService.addresses$.subscribe(addresses => {
+      this.addresses = addresses;
+    });
   }
 
   loadUserData(): void {
@@ -125,5 +127,62 @@ export class ProfileComponent implements OnInit {
       case 'Processing': return 'info';
       default: return 'secondary';
     }
+  }
+  
+  addNewAddress(): void {
+    this.editingAddress = null;
+    this.addressForm = {
+      fullName: '',
+      phone: '',
+      line1: '',
+      line2: '',
+      city: '',
+      state: '',
+      pincode: ''
+    };
+    this.showAddressForm = true;
+  }
+  
+  editAddress(address: Address): void {
+    this.editingAddress = address;
+    this.addressForm = { ...address };
+    this.showAddressForm = true;
+  }
+  
+  saveAddress(): void {
+    if (this.editingAddress) {
+      this.addressForm.id = this.editingAddress.id;
+    }
+    
+    this.addressService.saveAddress(this.addressForm).subscribe({
+      next: () => {
+        this.addressService.loadAddresses();
+        this.showAddressForm = false;
+        this.editingAddress = null;
+      },
+      error: (error) => {
+        console.error('Error saving address:', error);
+        alert('Error saving address');
+      }
+    });
+  }
+  
+  deleteAddress(address: Address): void {
+    if (confirm('Are you sure you want to delete this address?')) {
+      this.addressService.deleteAddress(address.id!).subscribe({
+        next: () => {
+          this.addressService.loadAddresses();
+        },
+        error: (error) => {
+          console.error('Error deleting address:', error);
+          alert('Error deleting address');
+        }
+      });
+    }
+  }
+  
+  cancelAddressForm(): void {
+    this.showAddressForm = false;
+    this.editingAddress = null;
   }
 }

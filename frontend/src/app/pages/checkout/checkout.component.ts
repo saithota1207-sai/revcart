@@ -7,6 +7,7 @@ import { CartService } from '../../services/cart.service';
 import { OrderService } from '../../services/order.service';
 import { PaymentService } from '../../services/payment.service';
 import { CouponService } from '../../services/coupon.service';
+import { AddressService, Address } from '../../services/address.service';
 
 @Component({
   selector: 'app-checkout',
@@ -16,7 +17,7 @@ import { CouponService } from '../../services/coupon.service';
   styleUrls: ['./checkout.component.scss']
 })
 export class CheckoutComponent implements OnInit {
-  address = {
+  address: Address = {
     fullName: '',
     phone: '',
     line1: '',
@@ -25,6 +26,11 @@ export class CheckoutComponent implements OnInit {
     state: '',
     pincode: ''
   };
+  
+  savedAddresses: Address[] = [];
+  selectedAddressId: number | null = null;
+  showAddressForm = false;
+  saveThisAddress = false;
   
   paymentMethod = '';
   upiId = '';
@@ -45,6 +51,7 @@ export class CheckoutComponent implements OnInit {
     private orderService: OrderService,
     private paymentService: PaymentService,
     private couponService: CouponService,
+    private addressService: AddressService,
     private router: Router
   ) {}
 
@@ -52,6 +59,16 @@ export class CheckoutComponent implements OnInit {
     this.cartService.cartItems$.subscribe(items => {
       this.orderItems = items;
       this.calculateTotals();
+    });
+    
+    this.addressService.addresses$.subscribe(addresses => {
+      this.savedAddresses = addresses;
+      if (addresses.length > 0 && !this.selectedAddressId) {
+        const defaultAddr = this.addressService.getDefaultAddress();
+        if (defaultAddr) {
+          this.selectAddress(defaultAddr.id!);
+        }
+      }
     });
   }
 
@@ -99,6 +116,41 @@ export class CheckoutComponent implements OnInit {
     this.couponMessage = '';
     this.calculateTotals();
   }
+  
+  selectAddress(addressId: number) {
+    this.selectedAddressId = addressId;
+    const selected = this.savedAddresses.find(addr => addr.id === addressId);
+    if (selected) {
+      this.address = { ...selected };
+      this.showAddressForm = false;
+    }
+  }
+  
+  useNewAddress() {
+    this.selectedAddressId = null;
+    this.address = {
+      fullName: '',
+      phone: '',
+      line1: '',
+      line2: '',
+      city: '',
+      state: '',
+      pincode: ''
+    };
+    this.showAddressForm = true;
+  }
+  
+  saveAddress() {
+    if (this.saveThisAddress && this.address.fullName && this.address.phone && this.address.line1) {
+      this.addressService.saveAddress(this.address).subscribe({
+        next: () => {
+          this.addressService.loadAddresses();
+          this.saveThisAddress = false;
+        },
+        error: (error) => console.error('Error saving address:', error)
+      });
+    }
+  }
 
   placeOrder() {
     if (!this.paymentMethod || this.paymentMethod.trim() === '') {
@@ -122,6 +174,10 @@ export class CheckoutComponent implements OnInit {
     }
 
     this.isProcessing = true;
+    
+    // Save address if requested
+    this.saveAddress();
+    
     const fullAddress = `${this.address.line1}, ${this.address.line2}, ${this.address.city}, ${this.address.state} ${this.address.pincode}`;
     
     this.orderService.createOrder(fullAddress, this.address.phone).subscribe({
