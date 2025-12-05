@@ -43,6 +43,15 @@ pipeline {
             }
         }
         
+        stage('Test Backend') {
+            steps {
+                dir('backend') {
+                    echo 'Running backend tests...'
+                    bat 'mvn test'
+                }
+            }
+        }
+        
         stage('Docker Build') {
             parallel {
                 stage('Build Frontend Image') {
@@ -92,19 +101,27 @@ pipeline {
         
         stage('Deploy') {
             steps {
-                echo 'Stopping and removing existing containers...'
-                bat '''
-                    docker stop revcart-frontend revcart-backend || echo "No containers to stop"
-                    docker rm revcart-frontend revcart-backend || echo "No containers to remove"
-                '''
-                
-                echo 'Deploying backend container...'
-                bat "docker run -d --name revcart-backend -p 8081:8081 --network revcart-network ${BACKEND_IMAGE}:latest || docker run -d --name revcart-backend -p 8081:8081 ${BACKEND_IMAGE}:latest"
-                
-                echo 'Deploying frontend container...'
-                bat "docker run -d --name revcart-frontend -p 4200:4200 --network revcart-network ${FRONTEND_IMAGE}:latest || docker run -d --name revcart-frontend -p 4200:4200 ${FRONTEND_IMAGE}:latest"
-                
-                echo 'Deployment completed successfully'
+                script {
+                    echo 'Stopping and removing existing containers...'
+                    bat '''
+                        docker stop revcart-frontend revcart-backend 2>nul || echo "No containers to stop"
+                        docker rm revcart-frontend revcart-backend 2>nul || echo "No containers to remove"
+                    '''
+                    
+                    echo 'Creating Docker network if not exists...'
+                    bat 'docker network create revcart-network 2>nul || echo "Network already exists"'
+                    
+                    echo 'Deploying backend container...'
+                    bat "docker run -d --name revcart-backend -p 8081:8081 --network revcart-network ${BACKEND_IMAGE}:latest"
+                    
+                    echo 'Waiting for backend to start...'
+                    sleep 10
+                    
+                    echo 'Deploying frontend container...'
+                    bat "docker run -d --name revcart-frontend -p 4200:4200 --network revcart-network ${FRONTEND_IMAGE}:latest"
+                    
+                    echo 'Deployment completed successfully'
+                }
             }
         }
     }
