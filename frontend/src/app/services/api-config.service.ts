@@ -11,18 +11,11 @@ export class ApiConfigService {
   }
 
   private getApiBaseUrl(): string {
-    const hostname = window.location.hostname;
-    const port = 8081;
-
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `http://localhost:${port}`;
-    } else {
-      return `http://${hostname}:${port}`;
-    }
+    return '';
   }
 
   getApiUrl(endpoint: string): string {
-    return `${this.apiBaseUrl}/api/${endpoint}`;
+    return `/api/${endpoint}`;
   }
 
   getBaseUrl(): string {

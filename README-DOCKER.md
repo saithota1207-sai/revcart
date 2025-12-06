@@ -1,39 +1,53 @@
-# All-in-One Docker Container
+# Docker Compose Setup
 
-This Docker image contains:
-- Frontend (Angular + Nginx) on port 4200
-- Backend (Spring Boot) on port 8081
-- MySQL on port 3306
-- MongoDB on port 27017
+This setup uses separate containers:
+- **MySQL** (mysql:8.0) on port 3306
+- **MongoDB** (mongo:7.0) on port 27017
+- **App** (Frontend + Backend) on ports 4200 and 8081
 
-## Build
+## Quick Start
 
 ```bash
-build.bat
+docker-run.bat
 ```
 
-## Run
+## Manual Steps
 
 ```bash
-docker run -d -p 4200:4200 -p 8081:8081 -p 3306:3306 -p 27017:27017 --name revcart revcart-all-in-one
+# Build backend
+cd backend
+mvn clean package -DskipTests
+cd ..
+
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
 ```
 
 ## Access
 
 - Frontend: http://localhost:4200
 - Backend API: http://localhost:8081
-- MySQL: localhost:3306 (user: root, password: root, database: revcart)
+- MySQL: localhost:3306 (root/root, database: revcart_db)
 - MongoDB: localhost:27017
 
-## Logs
+## Container Management
 
 ```bash
-docker logs revcart
-```
+# View status
+docker-compose ps
 
-## Stop
+# Restart services
+docker-compose restart
 
-```bash
-docker stop revcart
-docker rm revcart
+# Stop and remove (keeps data)
+docker-compose down
+
+# Stop and remove with data
+docker-compose down -v
 ```

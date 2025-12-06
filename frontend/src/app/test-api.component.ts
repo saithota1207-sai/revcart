@@ -41,7 +41,7 @@ export class TestApiComponent implements OnInit {
     this.error = '';
     
     // Test products endpoint
-    this.http.get<any[]>('http://localhost:8081/api/products').subscribe({
+    this.http.get<any[]>('/api/products').subscribe({
       next: (products) => {
         this.backendStatus = 'Connected ✓';
         this.productCount = products?.length || 0;
