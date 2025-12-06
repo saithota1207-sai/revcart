@@ -22,7 +22,7 @@ docker run -d -p 4200:4200 -p 8081:8081 -p 3306:3306 -p 27017:27017 --name revca
 
 - Frontend: http://localhost:4200
 - Backend API: http://localhost:8081
-- MySQL: localhost:3306 (user: revcart, password: revcart123, database: revcart)
+- MySQL: localhost:3306 (user: root, password: root, database: revcart)
 - MongoDB: localhost:27017
 
 ## Logs

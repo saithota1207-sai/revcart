@@ -50,8 +50,7 @@ RUN cp -r /app/frontend/dist/revcart/* /var/www/html/ || cp -r /app/frontend/dis
 RUN mkdir -p /var/run/mysqld && chown -R mysql:mysql /var/run/mysqld
 RUN service mysql start && \
     mysql -e "CREATE DATABASE IF NOT EXISTS revcart;" && \
-    mysql -e "CREATE USER IF NOT EXISTS 'revcart'@'localhost' IDENTIFIED BY 'revcart123';" && \
-    mysql -e "GRANT ALL PRIVILEGES ON revcart.* TO 'revcart'@'localhost';" && \
+    mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';" && \
     mysql -e "FLUSH PRIVILEGES;"
 
 # MongoDB initialization
