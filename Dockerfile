@@ -48,10 +48,14 @@ RUN cp -r /app/frontend/dist/revcart/* /var/www/html/ || cp -r /app/frontend/dis
 
 # MySQL initialization
 RUN mkdir -p /var/run/mysqld && chown -R mysql:mysql /var/run/mysqld
-RUN service mysql start && \
-    mysql -e "CREATE DATABASE IF NOT EXISTS revcart;" && \
-    mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';" && \
-    mysql -e "FLUSH PRIVILEGES;"
+RUN usermod -d /var/lib/mysql/ mysql
+RUN service mysql start && sleep 5 && \
+    mysql -u root <<EOF && \
+    service mysql stop
+CREATE DATABASE IF NOT EXISTS revcart_db;
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root';
+FLUSH PRIVILEGES;
+EOF
 
 # MongoDB initialization
 RUN mkdir -p /data/db && chown -R mongodb:mongodb /data/db
