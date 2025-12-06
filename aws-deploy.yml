@@ -1,0 +1,23 @@
+# AWS ECS Task Definition for RevCart All-in-One
+version: '3'
+services:
+  revcart:
+    image: saithota1207sai/revcart-all-in-one:latest
+    ports:
+      - "80:80"
+    volumes:
+      - revcart-data:/var/lib/mysql
+      - revcart-mongo:/data/db
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  revcart-data:
+  revcart-mongo:

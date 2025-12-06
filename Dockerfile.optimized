@@ -1,0 +1,227 @@
+# Optimized All-in-One Dockerfile for RevCart
+# Stage 1: Build Frontend
+FROM node:18-alpine AS frontend-build
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm ci --only=production
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Build Backend
+FROM maven:3.9.9-eclipse-temurin-17-alpine AS backend-build
+WORKDIR /app
+COPY backend/pom.xml ./
+COPY backend/src ./src
+RUN mvn clean package -DskipTests
+
+# Stage 3: Final Runtime Image
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install all required packages
+RUN apt-get update && apt-get install -y \
+    openjdk-17-jre-headless \
+    nginx \
+    mysql-server \
+    mongodb \
+    supervisor \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create application directories
+WORKDIR /app
+
+# Copy built artifacts
+COPY --from=backend-build /app/target/revcart-backend-1.0.0.jar ./app.jar
+COPY --from=frontend-build /app/dist/revcart /var/www/html
+
+# Copy SQL files for database initialization
+COPY backend/*.sql ./sql/ 2>/dev/null || true
+
+# Configure Nginx
+RUN rm -f /etc/nginx/sites-enabled/default
+COPY <<EOF /etc/nginx/sites-available/revcart
+server {
+    listen 80;
+    server_name _;
+    
+    location / {
+        root /var/www/html;
+        index index.html;
+        try_files \$uri \$uri/ /index.html;
+    }
+    
+    location /api/ {
+        proxy_pass http://127.0.0.1:8081/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+EOF
+
+RUN ln -s /etc/nginx/sites-available/revcart /etc/nginx/sites-enabled/
+
+# Configure application properties
+COPY <<EOF /app/application.properties
+server.port=8081
+spring.datasource.url=jdbc:mysql://127.0.0.1:3306/revcart_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+spring.datasource.username=root
+spring.datasource.password=root
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+revcart.app.jwtSecret=revCartSecretKeyForJWTTokenGeneration2024
+revcart.app.jwtExpirationMs=86400000
+spring.data.mongodb.uri=mongodb://127.0.0.1:27017/revcart_db
+spring.data.mongodb.auto-index-creation=true
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=bujjithota27084@gmail.com
+spring.mail.password=vbanptcefhczvoqx
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.security.oauth2.client.registration.google.client-id=1048739961914-ada23hm8me71ajf7v43pgf0ca23uqhc1.apps.googleusercontent.com
+spring.security.oauth2.client.registration.google.client-secret=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
+spring.security.oauth2.client.registration.google.scope=profile,email
+spring.security.oauth2.client.provider.google.user-name-attribute=sub
+app.frontend.url=http://localhost
+logging.level.com.revcart=INFO
+EOF
+
+# Configure Supervisor
+COPY <<EOF /etc/supervisor/conf.d/revcart.conf
+[supervisord]
+nodaemon=true
+user=root
+logfile=/var/log/supervisor/supervisord.log
+pidfile=/var/run/supervisord.pid
+
+[program:mysql]
+command=/usr/bin/mysqld_safe --user=mysql
+autostart=true
+autorestart=true
+user=mysql
+stdout_logfile=/var/log/mysql-stdout.log
+stderr_logfile=/var/log/mysql-stderr.log
+priority=100
+
+[program:mongodb]
+command=/usr/bin/mongod --dbpath /data/db --bind_ip 127.0.0.1 --port 27017
+autostart=true
+autorestart=true
+user=mongodb
+stdout_logfile=/var/log/mongodb-stdout.log
+stderr_logfile=/var/log/mongodb-stderr.log
+priority=200
+
+[program:nginx]
+command=/usr/sbin/nginx -g "daemon off;"
+autostart=true
+autorestart=true
+stdout_logfile=/var/log/nginx-stdout.log
+stderr_logfile=/var/log/nginx-stderr.log
+priority=300
+
+[program:backend]
+command=java -Xmx512m -jar /app/app.jar --spring.config.location=file:/app/application.properties
+directory=/app
+autostart=true
+autorestart=true
+stdout_logfile=/var/log/backend-stdout.log
+stderr_logfile=/var/log/backend-stderr.log
+priority=400
+environment=JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+EOF
+
+# Create initialization script
+COPY <<EOF /init.sh
+#!/bin/bash
+set -e
+
+echo "🚀 Starting RevCart All-in-One Container..."
+
+# Create required directories
+mkdir -p /var/log/supervisor /data/db /var/run/mysqld
+chown mysql:mysql /var/run/mysqld
+chown mongodb:mongodb /data/db
+
+# Initialize MySQL if needed
+if [ ! -d "/var/lib/mysql/mysql" ]; then
+    echo "📊 Initializing MySQL database..."
+    mysqld --initialize-insecure --user=mysql --datadir=/var/lib/mysql
+fi
+
+# Start MySQL temporarily for setup
+echo "🔧 Configuring MySQL..."
+mysqld_safe --user=mysql &
+MYSQL_PID=\$!
+
+# Wait for MySQL to start
+for i in {1..30}; do
+    if mysqladmin ping -h127.0.0.1 --silent; then
+        break
+    fi
+    echo "Waiting for MySQL to start... (\$i/30)"
+    sleep 2
+done
+
+# Create database and import data
+mysql -h127.0.0.1 -e "CREATE DATABASE IF NOT EXISTS revcart_db;"
+mysql -h127.0.0.1 -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';"
+mysql -h127.0.0.1 -e "FLUSH PRIVILEGES;"
+
+# Import SQL files if they exist
+if [ -f "/app/sql/database_queries.sql" ]; then
+    echo "📥 Importing database schema..."
+    mysql -h127.0.0.1 revcart_db < /app/sql/database_queries.sql
+fi
+
+if [ -f "/app/sql/complete_products.sql" ]; then
+    echo "📦 Importing product data..."
+    mysql -h127.0.0.1 revcart_db < /app/sql/complete_products.sql
+fi
+
+# Stop temporary MySQL
+kill \$MYSQL_PID
+wait \$MYSQL_PID 2>/dev/null || true
+
+echo "✅ Initialization complete. Starting all services..."
+
+# Start supervisor to manage all services
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/revcart.conf
+EOF
+
+RUN chmod +x /init.sh
+
+# Create health check script
+COPY <<EOF /health-check.sh
+#!/bin/bash
+# Check if all services are running
+curl -f http://127.0.0.1/ >/dev/null 2>&1 && \
+curl -f http://127.0.0.1:8081/actuator/health >/dev/null 2>&1 && \
+mysqladmin ping -h127.0.0.1 >/dev/null 2>&1 && \
+mongosh --eval "db.adminCommand('ping')" >/dev/null 2>&1
+EOF
+
+RUN chmod +x /health-check.sh
+
+# Expose ports
+EXPOSE 80 8081 3306 27017
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD /health-check.sh
+
+# Set volumes for data persistence
+VOLUME ["/var/lib/mysql", "/data/db"]
+
+# Start the application
+CMD ["/init.sh"]

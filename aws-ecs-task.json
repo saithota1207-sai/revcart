@@ -1,0 +1,60 @@
+{
+  "family": "revcart-all-in-one",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "revcart-container",
+      "image": "saithota1207sai/revcart-all-in-one:latest",
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/revcart",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "mountPoints": [
+        {
+          "sourceVolume": "mysql-data",
+          "containerPath": "/var/lib/mysql"
+        },
+        {
+          "sourceVolume": "mongo-data", 
+          "containerPath": "/data/db"
+        }
+      ]
+    }
+  ],
+  "volumes": [
+    {
+      "name": "mysql-data",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "fs-xxxxxxxxx"
+      }
+    },
+    {
+      "name": "mongo-data",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "fs-xxxxxxxxx"
+      }
+    }
+  ]
+}

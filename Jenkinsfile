@@ -4,8 +4,7 @@ pipeline {
     environment {
         DOCKER_HUB_USERNAME = 'saithota1207sai'
         DOCKER_HUB_CREDS = credentials('dockerhub-creds')
-        FRONTEND_IMAGE = "${DOCKER_HUB_USERNAME}/revcart-frontend"
-        BACKEND_IMAGE = "${DOCKER_HUB_USERNAME}/revcart-backend"
+        ALL_IN_ONE_IMAGE = "${DOCKER_HUB_USERNAME}/revcart-all-in-one"
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
     }
     
@@ -23,26 +22,6 @@ pipeline {
             }
         }
         
-        stage('Build Frontend') {
-            steps {
-                dir('frontend') {
-                    echo 'Installing frontend dependencies...'
-                    bat 'npm install'
-                    echo 'Building Angular application...'
-                    bat 'npm run build'
-                }
-            }
-        }
-        
-        stage('Build Backend') {
-            steps {
-                dir('backend') {
-                    echo 'Building Spring Boot application...'
-                    bat 'mvn clean package -DskipTests'
-                }
-            }
-        }
-        
         stage('Test Backend') {
             steps {
                 dir('backend') {
@@ -52,24 +31,10 @@ pipeline {
             }
         }
         
-        stage('Docker Build') {
-            parallel {
-                stage('Build Frontend Image') {
-                    steps {
-                        dir('frontend') {
-                            echo 'Building frontend Docker image...'
-                            bat "docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} -t ${FRONTEND_IMAGE}:latest ."
-                        }
-                    }
-                }
-                stage('Build Backend Image') {
-                    steps {
-                        dir('backend') {
-                            echo 'Building backend Docker image...'
-                            bat "docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} -t ${BACKEND_IMAGE}:latest ."
-                        }
-                    }
-                }
+        stage('Build All-in-One Image') {
+            steps {
+                echo 'Building all-in-one Docker image...'
+                bat "docker build -f Dockerfile.aws -t ${ALL_IN_ONE_IMAGE}:${BUILD_NUMBER} -t ${ALL_IN_ONE_IMAGE}:latest ."
             }
         }
         
@@ -80,45 +45,26 @@ pipeline {
             }
         }
         
-        stage('Push Docker Images') {
-            parallel {
-                stage('Push Frontend Image') {
-                    steps {
-                        echo 'Pushing frontend image to Docker Hub...'
-                        bat "docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}"
-                        bat "docker push ${FRONTEND_IMAGE}:latest"
-                    }
-                }
-                stage('Push Backend Image') {
-                    steps {
-                        echo 'Pushing backend image to Docker Hub...'
-                        bat "docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}"
-                        bat "docker push ${BACKEND_IMAGE}:latest"
-                    }
-                }
+        stage('Push Docker Image') {
+            steps {
+                echo 'Pushing all-in-one image to Docker Hub...'
+                bat "docker push ${ALL_IN_ONE_IMAGE}:${BUILD_NUMBER}"
+                bat "docker push ${ALL_IN_ONE_IMAGE}:latest"
             }
         }
         
         stage('Deploy') {
             steps {
                 script {
-                    echo 'Stopping and removing existing containers...'
-                    bat '''
-                        docker stop revcart-frontend revcart-backend 2>nul || echo "No containers to stop"
-                        docker rm revcart-frontend revcart-backend 2>nul || echo "No containers to remove"
-                    '''
+                    echo 'Stopping and removing existing container...'
+                    bat 'docker stop revcart-all-in-one 2>nul || echo "No container to stop"'
+                    bat 'docker rm revcart-all-in-one 2>nul || echo "No container to remove"'
                     
-                    echo 'Creating Docker network if not exists...'
-                    bat 'docker network create revcart-network 2>nul || echo "Network already exists"'
+                    echo 'Creating volumes for data persistence...'
+                    bat 'docker volume create revcart-data 2>nul || echo "Volume exists"'
                     
-                    echo 'Deploying backend container...'
-                    bat "docker run -d --name revcart-backend -p 8081:8081 --network revcart-network ${BACKEND_IMAGE}:latest"
-                    
-                    echo 'Waiting for backend to start...'
-                    sleep 10
-                    
-                    echo 'Deploying frontend container...'
-                    bat "docker run -d --name revcart-frontend -p 4200:4200 --network revcart-network ${FRONTEND_IMAGE}:latest"
+                    echo 'Deploying all-in-one container...'
+                    bat "docker run -d --name revcart-all-in-one -p 80:80 -v revcart-data:/var/lib/mysql --restart unless-stopped ${ALL_IN_ONE_IMAGE}:latest"
                     
                     echo 'Deployment completed successfully'
                 }
@@ -136,8 +82,8 @@ pipeline {
         }
         success {
             echo 'Pipeline completed successfully!'
-            echo "Frontend available at: http://localhost:4200"
-            echo "Backend available at: http://localhost:8081"
+            echo "Application available at: http://localhost"
+            echo "Ready for AWS deployment with image: ${ALL_IN_ONE_IMAGE}:latest"
         }
         failure {
             echo 'Pipeline failed. Check logs for details.'
